@@ -5,8 +5,32 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Donald_no_Backup"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
-    <Grid>
-        
-    </Grid>
+        Title="MainWindow" Height="600" Width="1000"
+        Background="#2E2E2E">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="{x:Static SystemParameters.CaptionHeight}"
+                      ResizeBorderThickness="{x:Static SystemParameters.WindowResizeBorderThickness}"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+    <Border BorderBrush="#58ACFA"
+            BorderThickness="1">
+        <Grid>
+            <Label Content="ドナルドのバックアップソフト"
+                   Foreground="#BDBDBD"
+                   FontFamily="Meiryo"/>
+            <StackPanel Orientation="Horizontal" Margin="5"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top">
+                <StackPanel.Resources>
+                    <ResourceDictionary Source="CaptionButtonStyle.xaml"/>
+                </StackPanel.Resources>
+                <Button Content="0" Style="{DynamicResource CaptionButtonStyleKey}" 
+                        Click="MinimizeButton_Click"/>
+                <Button Content="1" Style="{DynamicResource CaptionButtonStyleKey}"
+                        Click="MaximizeButton_Click"/>
+                <Button Content="r" Style="{DynamicResource CaptionButtonStyleKey}" 
+                        Click="Button_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
 </Window>
