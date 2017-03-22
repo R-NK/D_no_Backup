@@ -42,9 +42,11 @@
             this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
             this.notifyIcon1.Text = "ツールチップてすと";
             this.notifyIcon1.Visible = true;
+            this.notifyIcon1.DoubleClick += new System.EventHandler(this.toolStripMenuItem_Open_Click);
             // 
             // contextMenuStrip1
             // 
+            this.contextMenuStrip1.ImageScalingSize = new System.Drawing.Size(28, 28);
             this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripMenuItem_Open,
             this.toolStripMenuItem_Exit});
@@ -53,6 +55,7 @@
             // 
             // toolStripMenuItem_Open
             // 
+            this.toolStripMenuItem_Open.DoubleClickEnabled = true;
             this.toolStripMenuItem_Open.Name = "toolStripMenuItem_Open";
             this.toolStripMenuItem_Open.Size = new System.Drawing.Size(98, 22);
             this.toolStripMenuItem_Open.Text = "表示";

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -33,9 +34,17 @@ namespace Donald_no_Backup
         /// <param name="e">イベントデータ</param>
         private void toolStripMenuItem_Open_Click(object sender, EventArgs e)
         {
-            // MainWindow を生成、表示
-            var wnd = new MainWindow();
-            wnd.Show();
+            var window = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
+            if (window == null)
+            {
+                window = new MainWindow();
+                window.Show();
+            }
+            else
+            {
+                window.WindowState = WindowState.Normal;
+                window.Activate();
+            }
         }
 
         /// <summary>
