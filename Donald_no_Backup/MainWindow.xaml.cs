@@ -26,6 +26,8 @@ namespace Donald_no_Backup
         public MainWindow()
         {
             InitializeComponent();
+
+
             //カラムの自動調整
             Loaded += delegate
             {

@@ -23,6 +23,8 @@
                 <RowDefinition
                     Height="Auto"/>
                 <RowDefinition/>
+                <RowDefinition
+                    Height="Auto"/>
             </Grid.RowDefinitions>
             <Label Content="ドナルドのバックアップソフト"
                    Foreground="#BDBDBD"
@@ -74,6 +76,12 @@
                     </ListView.View>
                 </ListView>
             </Border>
+            <StackPanel Orientation="Vertical"
+                        Grid.Row="3">
+                <Label Content="うんこ"
+                       Foreground="#BDBDBD"
+                       HorizontalAlignment="Center"></Label>
+            </StackPanel>
         </Grid>
     </Border>
 </Window>
