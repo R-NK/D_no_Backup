@@ -123,6 +123,7 @@ namespace Donald_no_Backup
             ObservableCollection<DataList> returnList = new ObservableCollection<DataList>();
 
             AddWindow wnd = new AddWindow(recieveData, recieveString);
+            wnd.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             wnd.ShowDialog();
             returnList = wnd.dataList;
 

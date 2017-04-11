@@ -22,34 +22,43 @@ namespace Donald_no_Backup
     /// </summary>
     public partial class MainWindow : Window
     {
+        public static Window ThisWindow;
         public ObservableCollection<DataList> DataLists;
         public MainWindow()
         {
             InitializeComponent();
 
-
             //カラムの自動調整
             Loaded += delegate
             {
                 DataGridView.Columns[1].Width = (listView.ActualWidth - DataGridView.Columns[0].Width) / 2;
-                DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[1].Width;
+                DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[1].Width -10;
             };
             //ウィンドウのサイズ変更時にカラムの自動調整
             SizeChanged += delegate
             {
                 DataGridView.Columns[1].Width = (listView.ActualWidth - DataGridView.Columns[0].Width) / 2;
-                DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[1].Width;
+                DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[1].Width -10;
             };
-
+            //タスクトレイから起動されたらトレイアイコンを隠す
+            IsVisibleChanged += delegate
+            {
+                if (TaskIcon.Visibility == Visibility.Visible)
+                {
+                    TaskIcon.Visibility = Visibility.Hidden;
+                }
+            };
             DataLists = new ObservableCollection<DataList>();
             listView.ItemsSource = DataLists;
         }
 
 
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            ThisWindow = this;
+            this.Hide();
+            TaskIcon.Visibility = Visibility.Visible;
         }
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
@@ -97,6 +106,17 @@ namespace Donald_no_Backup
             {
                 MessageBox.Show("Error");
             }
+        }
+
+        private void TrayOpen_Click(object sender, RoutedEventArgs e)
+        {
+            this.Show();
+
+        }
+
+        private void TrayClose_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
         }
     }
 }
