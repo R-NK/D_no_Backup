@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace Donald_no_Backup
 {
@@ -116,7 +117,20 @@ namespace Donald_no_Backup
 
         private void TrayClose_Click(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            Application.Current.Shutdown();
+        }
+
+        private async void MenuStart_ClickAsync(object sender, RoutedEventArgs e)
+        {
+            StartButton.IsEnabled = false;
+            IProgress<int> progressCount = new Progress<int>(count =>
+            {
+                ProgressLabel.Content = "ファイル列挙中… " + count + "ファイル";
+            });
+            DispatcherTimer dispatcherTimer = new DispatcherTimer();
+            Backup bu = new Backup(DataLists[0].From, DataLists[0].To);
+            await Task.Run(() => bu.StartAsync(progressCount, dispatcherTimer));
+            StartButton.IsEnabled = true;
         }
     }
 }

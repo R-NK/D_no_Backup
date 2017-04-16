@@ -61,10 +61,14 @@
                           Click="AddBackup_Click"/>
                 <MenuItem Header="設定"
                           Foreground="#BDBDBD"></MenuItem>
+                <MenuItem x:Name="StartButton"
+                          Header="実行"
+                          Foreground="#BDBDBD"
+                          Click="MenuStart_ClickAsync"></MenuItem>
             </Menu>
             <Border BorderBrush="#58ACFA"
                     BorderThickness="1"
-                    Margin="10,5,10,10"
+                    Margin="10,5,10,0"
                     Grid.Row="2">
 
                 <ListView x:Name="listView"  Margin="0,0,0,0"
@@ -89,9 +93,13 @@
             </Border>
             <StackPanel Orientation="Vertical"
                         Grid.Row="3">
-                <Label Content="うんこ"
+                <Label x:Name="ProgressLabel"
+                       Content=""
+                       FontSize="14"
                        Foreground="#BDBDBD"
-                       HorizontalAlignment="Center"></Label>
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Margin="0,0,0,0"></Label>
             </StackPanel>
             <tb:TaskbarIcon x:Name="TaskIcon"
                             Grid.Row="1"
