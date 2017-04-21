@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.ComTypes;
@@ -16,17 +17,14 @@ namespace Donald_no_Backup
     {
         private string fromPath;
         private string toPath;
-        private List<Files> filesPath;
-        private List<Files> foldersPath;
         private int fileNum;
+        private List<string> result = new List<string>();
+        private List<string> errorList = new List<string>();
 
         public Backup(string fromPath, string toPath)
         {
             this.fromPath = fromPath;
             this.toPath = toPath;
-            filesPath = new List<Files>();
-            foldersPath = new List<Files>();
-
         }
 
         public async Task StartAsync(IProgress<int> progressCount, DispatcherTimer dispatcherTimer)
@@ -35,14 +33,23 @@ namespace Donald_no_Backup
             dispatcherTimer.Interval = TimeSpan.FromSeconds(1);
             dispatcherTimer.Tick += (s, args) =>
             {
-                //progressCount.Report(filesPath.Count);
                 progressCount.Report(fileNum);
             };
             dispatcherTimer.Start();
-            //await ListFiles(fromPath, toPath);
+            Stopwatch sw = Stopwatch.StartNew();
+
             await ListFilesAsync(fromPath, toPath);
 
+            sw.Stop();
+            File.WriteAllText(@"time.txt", sw.ElapsedMilliseconds + "ms");
+            //File.WriteAllLines(@"result.txt", result);       
+            //例外が一つでも投げられたらerror.txtに保存
+            if (errorList.Count > 0)
+            {
+                File.WriteAllLines(@"error.txt", errorList);
+            }
             dispatcherTimer.Stop();
+
             //using (StreamWriter sw = new StreamWriter("result.txt"))
             //{
             //    sw.WriteLine(filesPath.Count);
@@ -53,60 +60,6 @@ namespace Donald_no_Backup
             //}
         }
 
-        private async Task ListFiles(string fromPath, string toPath)
-        {
-
-            //対象ディレクトリのファイルを取得
-            IEnumerable<string> Files = Directory.EnumerateFiles(fromPath);
-            //対象ディレクトリのフォルダを取得
-            IEnumerable<string> folders = Directory.EnumerateDirectories(fromPath);
-
-            foreach (string file in Files)
-            {
-                try
-                {
-                    CompareFile(file, toPath + @"\" + Path.GetFileName(file));
-
-                }
-                catch (UnauthorizedAccessException)
-                {
-
-                }
-            }
-            foreach (string folder in folders)
-            {
-                //対象ディレクトリにある全てのフォルダに対してこのメソッドを再帰的に実行
-                int index = folder.LastIndexOf(@"\", StringComparison.Ordinal);
-                await ListFiles(folder, toPath + @"\" + folder.Substring(index + 1, folder.Length - index - 1));
-            }
-        }
-
-        private void CompareFile(string fromFilePath, string toFilePath)
-        {
-            //比較先ファイルが無ければリストに追加
-            if (!File.Exists(toFilePath))
-            {
-                filesPath.Add(new Files(fromFilePath, toFilePath));
-            }
-            else
-            {
-                //元ファイルのFileInfo作成
-                FileInfo fromFileInfo = new FileInfo(fromFilePath);
-                //比較先ファイルのFileInfo作成
-                FileInfo toFileInfo = new FileInfo(toFilePath);
-                //まずファイルサイズを比べる
-                if (fromFileInfo.Length != toFileInfo.Length)
-                {
-                    filesPath.Add(new Files(fromFilePath, toFilePath));
-                }
-                //次は更新日時
-                else if (fromFileInfo.LastWriteTime != toFileInfo.LastWriteTime)
-                {
-                    filesPath.Add(new Files(fromFilePath, toFilePath));
-                }
-            }
-        }
-
         private async Task ListFilesAsync(string fromPath, string toPath)
         {
             //対象ディレクトリのファイルを取得
@@ -114,9 +67,10 @@ namespace Donald_no_Backup
             //対象ディレクトリのフォルダを取得
             IEnumerable<string> folders = Directory.EnumerateDirectories(fromPath);
 
-            try
+
+            await Task.WhenAll(files.Select(async file =>
             {
-                await Task.WhenAll(files.Select(async file =>
+                try
                 {
                     string to = toPath + @"\" + Path.GetFileName(file);
                     if (CheckFile(file, to))
@@ -125,22 +79,23 @@ namespace Donald_no_Backup
                         {
                             Directory.CreateDirectory(toPath);
                         }
-                        using (FileStream fromStream = File.Open(file, FileMode.Open))
-                        {
-                            using (FileStream toStream = File.Create(to))
-                            {
-                                await fromStream.CopyToAsync(toStream);
-                                fileNum++;
-                            }
-                        }
+                        //ファイルコピー
+                        //await CopyWithBuffer(file, to);
+                        await CopyAsync(file, to);
+                        fileNum++;
+                        //作成日時を元ファイルと同じにする
                         File.SetCreationTime(to, File.GetCreationTime(file));
                     }
-                }));
-            }
-            catch (UnauthorizedAccessException)
-            {
-
-            }
+                    //result.Add(file);
+                }
+                catch (Exception e)
+                {
+                    if(!file.Contains("RECYCLE.BIN"))
+                    {
+                        errorList.Add(e.ToString());
+                    }
+                }
+            }));
 
             await Task.WhenAll(folders.Select(async folder =>
             {
@@ -159,7 +114,34 @@ namespace Donald_no_Backup
 
                 }
             }));
-        }      
+        }
+
+        private async Task CopyAsync(string file, string to)
+        {
+            using (FileStream fromStream = File.Open(file, FileMode.Open))
+            {
+                using (FileStream toStream = File.Create(to))
+                {
+                    await fromStream.CopyToAsync(toStream);
+                }
+            }
+        }
+
+        private async Task CopyWithBuffer(string file, string to)
+        {
+            byte[] buf = new byte[10000000];
+            using (FileStream inputStream = File.Open(file, FileMode.Open))
+            {
+                using (FileStream outputStream = File.Create(to))
+                {
+                    int numBytes;
+                    while ((numBytes = await inputStream.ReadAsync(buf, 0, buf.Length)) > 0)
+                    {
+                        await outputStream.WriteAsync(buf, 0, numBytes);
+                    }
+                }
+            }
+        }
 
         private bool CheckFile(string fromFilePath, string toFilePath)
         {
@@ -183,20 +165,6 @@ namespace Donald_no_Backup
             }
             //たぶん同一ファイル
             return false;
-        }
-
-
-    }
-
-    class Files
-    {
-        public string fromPath;
-        public string toPath;
-
-        public Files(string fromPath, string toPath)
-        {
-            this.fromPath = fromPath;
-            this.toPath = toPath;
-        }
+        }     
     }
 }

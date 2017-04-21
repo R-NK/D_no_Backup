@@ -128,8 +128,12 @@ namespace Donald_no_Backup
                 ProgressLabel.Content = count + "ファイルをコピー";
             });
             DispatcherTimer dispatcherTimer = new DispatcherTimer();
-            Backup bu = new Backup(DataLists[0].From, DataLists[0].To);
-            await Task.Run(() => bu.StartAsync(progressCount, dispatcherTimer));
+            await Task.WhenAll(DataLists.Select(async data =>
+            {
+                Backup bu = new Backup(data.From, data.To);
+                await Task.Run(() => bu.StartAsync(progressCount, dispatcherTimer));
+            }));
+
             ProgressLabel.Content = "完了";
             StartButton.IsEnabled = true;
         }
