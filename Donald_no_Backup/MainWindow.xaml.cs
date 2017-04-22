@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Xml.Serialization;
 
 namespace Donald_no_Backup
 {
@@ -32,14 +34,12 @@ namespace Donald_no_Backup
             //カラムの自動調整
             Loaded += delegate
             {
-                DataGridView.Columns[1].Width = (listView.ActualWidth - DataGridView.Columns[0].Width) / 2;
-                DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[1].Width -10;
+                ChangeListSize();
             };
             //ウィンドウのサイズ変更時にカラムの自動調整
             SizeChanged += delegate
             {
-                DataGridView.Columns[1].Width = (listView.ActualWidth - DataGridView.Columns[0].Width) / 2;
-                DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[1].Width -10;
+                ChangeListSize();
             };
             //タスクトレイから起動されたらトレイアイコンを隠す
             IsVisibleChanged += delegate
@@ -50,6 +50,15 @@ namespace Donald_no_Backup
                 }
             };
             DataLists = new ObservableCollection<DataList>();
+            //xml読み込み
+            XmlSerializer xml = new XmlSerializer(typeof(ObservableCollection<DataList>));
+            using (StreamReader sr = new StreamReader("backup.xml"))
+            {
+                if (!sr.EndOfStream)
+                {
+                    DataLists = (ObservableCollection<DataList>)xml.Deserialize(sr);
+                }
+            }
             listView.ItemsSource = DataLists;
         }
 
@@ -86,6 +95,7 @@ namespace Donald_no_Backup
             {
                 DataLists.Add(item);
             }
+
         }
 
         void ListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -123,19 +133,58 @@ namespace Donald_no_Backup
         private async void MenuStart_ClickAsync(object sender, RoutedEventArgs e)
         {
             StartButton.IsEnabled = false;
-            IProgress<int> progressCount = new Progress<int>(count =>
+            AddButton.IsEnabled = false;
+            foreach (var data in DataLists)
             {
-                ProgressLabel.Content = count + "ファイルをコピー";
-            });
-            DispatcherTimer dispatcherTimer = new DispatcherTimer();
-            await Task.WhenAll(DataLists.Select(async data =>
-            {
-                Backup bu = new Backup(data.From, data.To);
-                await Task.Run(() => bu.StartAsync(progressCount, dispatcherTimer));
-            }));
+                data.Progress = "待機中…";
+            }
 
-            ProgressLabel.Content = "完了";
+            DispatcherTimer dispatcherTimer = new DispatcherTimer();
+
+            foreach (var data in DataLists)
+            {
+                IProgress<int[]> progress = new Progress<int[]>(count =>
+                {
+                    data.Progress = count[1] + "/" + count[0];
+                    if (TaskIcon.Visibility == Visibility.Visible)
+                    {
+                        TaskIcon.ToolTipText = count[1] + "/" + count[0];
+                    }
+                });
+                Backup bu = new Backup(data.From, data.To);
+                await Task.Run(async () =>
+                {
+                    await bu.StartAsync(progress, dispatcherTimer);
+                });
+                data.Progress = "完了";
+            }
+            TaskIcon.ToolTipText = "バックアップ成功:" + DateTime.Now;
             StartButton.IsEnabled = true;
+            AddButton.IsEnabled = true;
+        }
+
+        private void MenuSave_Click(object sender, RoutedEventArgs e)
+        {
+            //xmlに保存
+            XmlSerializer xml = new XmlSerializer(typeof(ObservableCollection<DataList>));
+            using (StreamWriter sw = new StreamWriter("backup.xml"))
+            {
+                xml.Serialize(sw, DataLists);
+            }
+        }
+
+        private void ListDelete_Click(object sender, RoutedEventArgs e)
+        {
+            if (listView.SelectedItem != null)
+            {
+                DataLists.RemoveAt(listView.SelectedIndex);
+            }
+        }
+
+        private void ChangeListSize()
+        {
+            DataGridView.Columns[1].Width = (listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[3].Width) / 2;
+            DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[3].Width - DataGridView.Columns[1].Width - 10;
         }
     }
 }

@@ -4,14 +4,23 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Serialization;
 
 namespace Donald_no_Backup
 {
+    [Serializable]
     public class DataList : INotifyPropertyChanged
     {
         private string name;
         private string from;
         private string to;
+        private string progress;
+
+        public DataList()
+        {
+            
+        }
 
         public string Name
         {
@@ -43,6 +52,18 @@ namespace Donald_no_Backup
                 if(value == this.to) return;
                 this.to = value;
                 NotifyPropertyChanged("To");
+            }
+        }
+
+        [XmlIgnore]
+        public string Progress
+        {
+            get { return this.progress; }
+            set
+            {
+                if(value == this.progress) return;
+                this.progress = value;
+                NotifyPropertyChanged("Progress");
             }
         }
 

@@ -17,8 +17,7 @@ namespace Donald_no_Backup
     {
         private string fromPath;
         private string toPath;
-        private int fileNum;
-        private List<string> result = new List<string>();
+        private int[] Nums = {0,0};
         private List<string> errorList = new List<string>();
 
         public Backup(string fromPath, string toPath)
@@ -27,40 +26,26 @@ namespace Donald_no_Backup
             this.toPath = toPath;
         }
 
-        public async Task StartAsync(IProgress<int> progressCount, DispatcherTimer dispatcherTimer)
+        public async Task StartAsync(IProgress<int[]> progressCount, DispatcherTimer dispatcherTimer)
         {
-            //1秒ごとにコピー済みファイル数を報告
-            dispatcherTimer.Interval = TimeSpan.FromSeconds(1);
-            dispatcherTimer.Tick += (s, args) =>
-            {
-                progressCount.Report(fileNum);
-            };
-            dispatcherTimer.Start();
             Stopwatch sw = Stopwatch.StartNew();
 
-            await ListFilesAsync(fromPath, toPath);
+            await ListFilesAsync(fromPath, toPath, progressCount);
 
             sw.Stop();
-            File.WriteAllText(@"time.txt", sw.ElapsedMilliseconds + "ms");
-            //File.WriteAllLines(@"result.txt", result);       
+            using (StreamWriter writer = new StreamWriter("time.txt", true))
+            {
+                writer.WriteLine(sw.ElapsedMilliseconds + "ms");
+            }
+            
             //例外が一つでも投げられたらerror.txtに保存
             if (errorList.Count > 0)
             {
                 File.WriteAllLines(@"error.txt", errorList);
             }
-            dispatcherTimer.Stop();
-
-            //using (StreamWriter sw = new StreamWriter("result.txt"))
-            //{
-            //    sw.WriteLine(filesPath.Count);
-            //    foreach (var file in filesPath)
-            //    {
-            //        sw.WriteLine(file.fromPath + "," + file.toPath);
-            //    }
-            //}
         }
 
-        private async Task ListFilesAsync(string fromPath, string toPath)
+        private async Task ListFilesAsync(string fromPath, string toPath, IProgress<int[]> progressCount)
         {
             //対象ディレクトリのファイルを取得
             IEnumerable<string> files = Directory.EnumerateFiles(fromPath);
@@ -75,18 +60,19 @@ namespace Donald_no_Backup
                     string to = toPath + @"\" + Path.GetFileName(file);
                     if (CheckFile(file, to))
                     {
+                        Interlocked.Increment(ref Nums[0]);
+                        progressCount.Report(Nums);
                         if (!Directory.Exists(toPath))
                         {
                             Directory.CreateDirectory(toPath);
                         }
                         //ファイルコピー
-                        //await CopyWithBuffer(file, to);
-                        await CopyAsync(file, to);
-                        fileNum++;
+                        await CopyWithBufferAllAsync(file, to, 524288);
+                        Interlocked.Increment(ref Nums[1]);
+                        progressCount.Report(Nums);
                         //作成日時を元ファイルと同じにする
                         File.SetCreationTime(to, File.GetCreationTime(file));
                     }
-                    //result.Add(file);
                 }
                 catch (Exception e)
                 {
@@ -106,10 +92,10 @@ namespace Donald_no_Backup
                     {
                         //対象ディレクトリにある全てのフォルダに対してこのメソッドを再帰的に実行
                         int index = folder.LastIndexOf(@"\", StringComparison.Ordinal);
-                        await ListFilesAsync(folder, toPath + @"\" + folder.Substring(index + 1, folder.Length - index - 1));
+                        await ListFilesAsync(folder, toPath + @"\" + folder.Substring(index + 1, folder.Length - index - 1), progressCount);
                     }
                 }
-                catch (UnauthorizedAccessException e)
+                catch (UnauthorizedAccessException)
                 {
 
                 }
@@ -127,13 +113,45 @@ namespace Donald_no_Backup
             }
         }
 
-        private async Task CopyWithBuffer(string file, string to)
+        private async Task CopyWithBufferAsync(string file, string to, int bufSize)
         {
-            byte[] buf = new byte[10000000];
             using (FileStream inputStream = File.Open(file, FileMode.Open))
             {
                 using (FileStream outputStream = File.Create(to))
                 {
+                    if (inputStream.Length > bufSize)
+                    {
+                        byte[] buf = new byte[bufSize];
+                        int numBytes;
+                        while ((numBytes = await inputStream.ReadAsync(buf, 0, buf.Length)) > 0)
+                        {
+                            await outputStream.WriteAsync(buf, 0, numBytes);
+                        }
+                    }
+                    else
+                    {
+                        await inputStream.CopyToAsync(outputStream);
+                    }
+                }
+            }
+        }
+
+        private async Task CopyWithBufferAllAsync(string file, string to, int bufSize)
+        {
+            using (FileStream inputStream = File.Open(file, FileMode.Open))
+            {
+                using (FileStream outputStream = File.Create(to))
+                {
+                    byte[] buf;
+                    if (inputStream.Length > bufSize)
+                    {
+                        buf = new byte[bufSize];                     
+                    }
+                    else
+                    {
+                        //入力ファイルが既定バッファより小さい場合そのファイルサイズでバッファを用意
+                        buf = new byte[inputStream.Length];
+                    }
                     int numBytes;
                     while ((numBytes = await inputStream.ReadAsync(buf, 0, buf.Length)) > 0)
                     {

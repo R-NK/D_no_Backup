@@ -20,6 +20,10 @@
         <Grid>
             <Grid.Resources>
                 <local:ShowWindow x:Key="ShowWindow"/>
+                <ContextMenu x:Key="ListMenu">
+                    <MenuItem Header="削除"
+                              Click="ListDelete_Click"></MenuItem>
+                </ContextMenu>
             </Grid.Resources>
             <Grid.RowDefinitions>
                 <RowDefinition
@@ -54,9 +58,12 @@
                   Background="#2E2E2E" FontSize="14">
                 <MenuItem Header="ファイル"
                           Foreground="#BDBDBD">
-                    <MenuItem Header="保存"/>
+                    <MenuItem Header="保存"
+                              Click="MenuSave_Click"
+                              Foreground="Black"/>
                 </MenuItem>
-                <MenuItem Header="追加"
+                <MenuItem x:Name="AddButton"
+                          Header="追加"
                           Foreground="#BDBDBD"
                           Click="AddBackup_Click"/>
                 <MenuItem Header="設定"
@@ -74,7 +81,8 @@
                 <ListView x:Name="listView"  Margin="0,0,0,0"
                           Background="#F2F2F2"
                           ItemsSource="{Binding}"
-                          MouseDoubleClick="ListView_MouseDoubleClick">
+                          MouseDoubleClick="ListView_MouseDoubleClick"
+                          ContextMenu="{DynamicResource ListMenu}">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="{x:Type ListViewItem}">
                             <Setter Property="Foreground" Value="Black"></Setter>
@@ -87,6 +95,7 @@
                             <GridViewColumn Header="タイトル" DisplayMemberBinding="{Binding Name}" Width="200"/>
                             <GridViewColumn Header="バックアップ元" DisplayMemberBinding="{Binding From}" Width="300"/>
                             <GridViewColumn Header="バックアップ先" DisplayMemberBinding="{Binding To}" Width="300"/>
+                            <GridViewColumn Header="進捗" DisplayMemberBinding="{Binding Progress}" Width="100"/>
                         </GridView>
                     </ListView.View>
                 </ListView>
