@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:Donald_no_Backup"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+
     </Application.Resources>
 </Application>

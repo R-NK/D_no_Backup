@@ -62,8 +62,6 @@ namespace Donald_no_Backup
             listView.ItemsSource = DataLists;
         }
 
-
-
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             ThisWindow = this;
@@ -95,7 +93,6 @@ namespace Donald_no_Backup
             {
                 DataLists.Add(item);
             }
-
         }
 
         void ListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -122,7 +119,6 @@ namespace Donald_no_Backup
         private void TrayOpen_Click(object sender, RoutedEventArgs e)
         {
             this.Show();
-
         }
 
         private void TrayClose_Click(object sender, RoutedEventArgs e)
@@ -139,8 +135,6 @@ namespace Donald_no_Backup
                 data.Progress = "待機中…";
             }
 
-            DispatcherTimer dispatcherTimer = new DispatcherTimer();
-
             foreach (var data in DataLists)
             {
                 IProgress<int[]> progress = new Progress<int[]>(count =>
@@ -154,7 +148,7 @@ namespace Donald_no_Backup
                 Backup bu = new Backup(data.From, data.To);
                 await Task.Run(async () =>
                 {
-                    await bu.StartAsync(progress, dispatcherTimer);
+                    await bu.StartAsync(progress);
                 });
                 data.Progress = "完了";
             }

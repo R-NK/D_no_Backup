@@ -41,7 +41,6 @@ namespace Donald_no_Backup
 
             this.oriData = recieveData;
             dataList = new ObservableCollection<DataList>();
-
         }
 
         private void Cancel_OnClick(object sender, RoutedEventArgs e)

@@ -26,17 +26,9 @@ namespace Donald_no_Backup
             this.toPath = toPath;
         }
 
-        public async Task StartAsync(IProgress<int[]> progressCount, DispatcherTimer dispatcherTimer)
+        public async Task StartAsync(IProgress<int[]> progressCount)
         {
-            Stopwatch sw = Stopwatch.StartNew();
-
             await ListFilesAsync(fromPath, toPath, progressCount);
-
-            sw.Stop();
-            using (StreamWriter writer = new StreamWriter("time.txt", true))
-            {
-                writer.WriteLine(sw.ElapsedMilliseconds + "ms");
-            }
             
             //例外が一つでも投げられたらerror.txtに保存
             if (errorList.Count > 0)
@@ -51,7 +43,6 @@ namespace Donald_no_Backup
             IEnumerable<string> files = Directory.EnumerateFiles(fromPath);
             //対象ディレクトリのフォルダを取得
             IEnumerable<string> folders = Directory.EnumerateDirectories(fromPath);
-
 
             await Task.WhenAll(files.Select(async file =>
             {
@@ -100,40 +91,6 @@ namespace Donald_no_Backup
 
                 }
             }));
-        }
-
-        private async Task CopyAsync(string file, string to)
-        {
-            using (FileStream fromStream = File.Open(file, FileMode.Open))
-            {
-                using (FileStream toStream = File.Create(to))
-                {
-                    await fromStream.CopyToAsync(toStream);
-                }
-            }
-        }
-
-        private async Task CopyWithBufferAsync(string file, string to, int bufSize)
-        {
-            using (FileStream inputStream = File.Open(file, FileMode.Open))
-            {
-                using (FileStream outputStream = File.Create(to))
-                {
-                    if (inputStream.Length > bufSize)
-                    {
-                        byte[] buf = new byte[bufSize];
-                        int numBytes;
-                        while ((numBytes = await inputStream.ReadAsync(buf, 0, buf.Length)) > 0)
-                        {
-                            await outputStream.WriteAsync(buf, 0, numBytes);
-                        }
-                    }
-                    else
-                    {
-                        await inputStream.CopyToAsync(outputStream);
-                    }
-                }
-            }
         }
 
         private async Task CopyWithBufferAllAsync(string file, string to, int bufSize)
