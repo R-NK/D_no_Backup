@@ -31,6 +31,33 @@ namespace Donald_no_Backup
         {
             InitializeComponent();
 
+            DataLists = new ObservableCollection<DataList>();
+            //xml読み込み
+            XmlSerializer xml = new XmlSerializer(typeof(ObservableCollection<DataList>));
+            using (StreamReader sr = new StreamReader("backup.xml"))
+            {
+                if (!sr.EndOfStream)
+                {
+                    DataLists = (ObservableCollection<DataList>)xml.Deserialize(sr);
+                }
+            }
+
+            if (App.CommandLineArgs != null)
+            {
+                foreach (var str in App.CommandLineArgs)
+                {
+                    if (str == "start")
+                    {
+                        this.Hide();
+                        TaskIcon.Visibility = Visibility.Visible;
+                        Loaded += async (sender, args) =>
+                        {
+                            await StartBackupAsync();
+                        };
+                    }
+                }
+            }
+
             //カラムの自動調整
             Loaded += delegate
             {
@@ -49,16 +76,7 @@ namespace Donald_no_Backup
                     TaskIcon.Visibility = Visibility.Hidden;
                 }
             };
-            DataLists = new ObservableCollection<DataList>();
-            //xml読み込み
-            XmlSerializer xml = new XmlSerializer(typeof(ObservableCollection<DataList>));
-            using (StreamReader sr = new StreamReader("backup.xml"))
-            {
-                if (!sr.EndOfStream)
-                {
-                    DataLists = (ObservableCollection<DataList>)xml.Deserialize(sr);
-                }
-            }
+            
             listView.ItemsSource = DataLists;
         }
 
@@ -119,6 +137,7 @@ namespace Donald_no_Backup
         private void TrayOpen_Click(object sender, RoutedEventArgs e)
         {
             this.Show();
+            TaskIcon.Visibility = Visibility.Hidden;
         }
 
         private void TrayClose_Click(object sender, RoutedEventArgs e)
@@ -135,24 +154,8 @@ namespace Donald_no_Backup
                 data.Progress = "待機中…";
             }
 
-            foreach (var data in DataLists)
-            {
-                IProgress<int[]> progress = new Progress<int[]>(count =>
-                {
-                    data.Progress = count[1] + "/" + count[0];
-                    if (TaskIcon.Visibility == Visibility.Visible)
-                    {
-                        TaskIcon.ToolTipText = count[1] + "/" + count[0];
-                    }
-                });
-                Backup bu = new Backup(data.From, data.To);
-                await Task.Run(async () =>
-                {
-                    await bu.StartAsync(progress);
-                });
-                data.Progress = "完了";
-            }
-            TaskIcon.ToolTipText = "バックアップ成功:" + DateTime.Now;
+            await StartBackupAsync();
+            
             StartButton.IsEnabled = true;
             AddButton.IsEnabled = true;
         }
@@ -179,6 +182,28 @@ namespace Donald_no_Backup
         {
             DataGridView.Columns[1].Width = (listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[3].Width) / 2;
             DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[3].Width - DataGridView.Columns[1].Width - 10;
+        }
+
+        private async Task StartBackupAsync()
+        {
+            foreach (var data in DataLists)
+            {
+                IProgress<int[]> progress = new Progress<int[]>(count =>
+                {
+                    data.Progress = count[1] + "/" + count[0];
+                    if (TaskIcon.Visibility == Visibility.Visible)
+                    {
+                        TaskIcon.ToolTipText = count[1] + "/" + count[0];
+                    }
+                });
+                Backup bu = new Backup(data.From, data.To);
+                await Task.Run(async () =>
+                {
+                    await bu.StartAsync(progress);
+                });
+                data.Progress = "完了";
+            }
+            TaskIcon.ToolTipText = "バックアップ成功:" + DateTime.Now;
         }
     }
 }

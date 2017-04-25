@@ -123,9 +123,6 @@
     <Folder Include="Themes\" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="icon\gj.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="icon\gj.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
