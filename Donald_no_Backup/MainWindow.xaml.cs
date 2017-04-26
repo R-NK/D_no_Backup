@@ -42,22 +42,6 @@ namespace Donald_no_Backup
                 }
             }
 
-            if (App.CommandLineArgs != null)
-            {
-                foreach (var str in App.CommandLineArgs)
-                {
-                    if (str == "start")
-                    {
-                        this.Hide();
-                        TaskIcon.Visibility = Visibility.Visible;
-                        Loaded += async (sender, args) =>
-                        {
-                            await StartBackupAsync();
-                        };
-                    }
-                }
-            }
-
             //カラムの自動調整
             Loaded += delegate
             {
@@ -78,6 +62,23 @@ namespace Donald_no_Backup
             };
             
             listView.ItemsSource = DataLists;
+
+            if (App.CommandLineArgs != null)
+            {
+                foreach (var str in App.CommandLineArgs)
+                {
+                    if (str == "start")
+                    {
+                        ThisWindow = this;
+                        this.Hide();
+                        TaskIcon.Visibility = Visibility.Visible;
+                        Loaded += async (sender, args) =>
+                        {
+                            await StartBackupAsync();
+                        };
+                    }
+                }
+            }
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
