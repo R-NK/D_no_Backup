@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,6 +18,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Xml.Serialization;
+using Hardcodet.Wpf.TaskbarNotification;
 
 namespace Donald_no_Backup
 {
@@ -63,22 +65,6 @@ namespace Donald_no_Backup
             
             listView.ItemsSource = DataLists;
 
-            if (App.CommandLineArgs != null)
-            {
-                foreach (var str in App.CommandLineArgs)
-                {
-                    if (str == "start")
-                    {
-                        ThisWindow = this;
-                        this.Hide();
-                        TaskIcon.Visibility = Visibility.Visible;
-                        Loaded += async (sender, args) =>
-                        {
-                            await StartBackupAsync();
-                        };
-                    }
-                }
-            }
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -185,8 +171,9 @@ namespace Donald_no_Backup
             DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[3].Width - DataGridView.Columns[1].Width - 10;
         }
 
-        private async Task StartBackupAsync()
+        public async Task StartBackupAsync()
         {
+            TaskIcon.ShowBalloonTip("バックアップ開始", "", BalloonIcon.Info);
             foreach (var data in DataLists)
             {
                 IProgress<int[]> progress = new Progress<int[]>(count =>
@@ -204,7 +191,28 @@ namespace Donald_no_Backup
                 });
                 data.Progress = "完了";
             }
-            TaskIcon.ToolTipText = "バックアップ成功:" + DateTime.Now;
+            TaskIcon.ToolTipText = "バックアップ完了:" + DateTime.Now;
+            TaskIcon.ShowBalloonTip("バックアップ完了", $"エラー:{ReadError()}", BalloonIcon.Info);
+        }
+
+        private int ReadError()
+        {
+            int errors = 0;
+            if (File.Exists("error.txt"))
+            {
+                using (StreamReader sr = new StreamReader("error.txt"))
+                {
+                    while (!sr.EndOfStream)
+                    {
+                        string line = sr.ReadLine();
+                        if (line.Substring(0, 3) != "   " && line.Substring(0, 3) != "---")
+                        {
+                            errors++;
+                        }
+                    }
+                }
+            }
+            return errors;
         }
     }
 }
