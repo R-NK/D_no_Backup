@@ -23,5 +23,15 @@ namespace Donald_no_Backup
         {
             InitializeComponent();
         }
+
+        private void Add_OnClick(object sender, EventRoute e)
+        {
+            
+        }
+
+        private void Cancel_OnClick(object sender, EventRoute e)
+        {
+            
+        }
     }
 }
