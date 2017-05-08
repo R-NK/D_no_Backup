@@ -59,6 +59,10 @@ namespace Donald_no_Backup
                 FromText.Text = dlg.FileName;
                 this.Activate();
             }
+            else
+            {
+                this.Activate();
+            }
         }
 
         private void To_OnClick(object sender, RoutedEventArgs e)
@@ -70,6 +74,10 @@ namespace Donald_no_Backup
             if (ret == CommonFileDialogResult.Ok)
             {
                 ToText.Text = dlg.FileName;
+                this.Activate();
+            }
+            else
+            {
                 this.Activate();
             }
         }
@@ -117,7 +125,7 @@ namespace Donald_no_Backup
             this.Close();
         }
         
-        static public ObservableCollection<DataList> ShowCustom(ObservableCollection<DataList> recieveData, params string[] recieveString)
+        public static ObservableCollection<DataList> ShowCustom(ObservableCollection<DataList> recieveData, params string[] recieveString)
         {
             ObservableCollection<DataList> returnList = new ObservableCollection<DataList>();
 

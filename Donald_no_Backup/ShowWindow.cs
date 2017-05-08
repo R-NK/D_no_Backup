@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 
 namespace Donald_no_Backup
@@ -18,8 +19,10 @@ namespace Donald_no_Backup
 
         public void Execute(object parameter)
         {
-            MainWindow.ThisWindow.Show();
-            
+            if (MainWindow.ThisWindow != null)
+            {
+                MainWindow.ThisWindow.Show();
+            }
         }
     }
 }

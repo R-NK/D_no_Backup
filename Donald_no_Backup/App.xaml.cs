@@ -13,7 +13,7 @@ namespace Donald_no_Backup
     /// </summary>
     public partial class App : Application
     {
-        protected async void Application_Startup(object sender, StartupEventArgs e)
+        public async void Application_Startup(object sender, StartupEventArgs e)
         {
             if (e.Args.Length != 0)
             {
@@ -23,9 +23,17 @@ namespace Donald_no_Backup
                     {
                         MainWindow window = new MainWindow();
                         window.TaskIcon.Visibility = Visibility.Visible;
+                        window.CreateMainWindow(window);
                         await window.StartBackupAsync();
+                        await Task.Delay(10000);
+                        Current.Shutdown();
                     }
                 }
+            }
+            else
+            {
+                MainWindow window = new MainWindow();
+                window.Show();
             }
         }
     }

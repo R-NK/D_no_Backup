@@ -1,15 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.ComTypes;
-using System.Runtime.Remoting.Channels;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Threading;
 
 namespace Donald_no_Backup
 {
@@ -17,7 +11,7 @@ namespace Donald_no_Backup
     {
         private string fromPath;
         private string toPath;
-        private int[] Nums = {0,0};
+        private int[] Nums = { 0, 0 };
         private List<string> errorList = new List<string>();
 
         public Backup(string fromPath, string toPath)
@@ -26,24 +20,21 @@ namespace Donald_no_Backup
             this.toPath = toPath;
         }
 
-        public async Task StartAsync(IProgress<int[]> progressCount)
+        public async Task StartAsync(IProgress<int[]> progressCount, int bufferSize, string startTime)
         {
-            await ListFilesAsync(fromPath, toPath, progressCount);
-            
+            await ListFilesAsync(fromPath, toPath, progressCount, bufferSize);
+
             //例外が一つでも投げられたらerror.txtに保存
             if (errorList.Count > 0)
             {
-                File.WriteAllLines(@"error.txt", errorList);
+                File.WriteAllLines($"error_{startTime}.txt", errorList);
             }
         }
 
-        private async Task ListFilesAsync(string fromPath, string toPath, IProgress<int[]> progressCount)
+        private async Task ListFilesAsync(string fromPath, string toPath, IProgress<int[]> progressCount, int bufferSize)
         {
             //対象ディレクトリのファイルを取得
             IEnumerable<string> files = Directory.EnumerateFiles(fromPath);
-            //対象ディレクトリのフォルダを取得
-            IEnumerable<string> folders = Directory.EnumerateDirectories(fromPath);
-
             await Task.WhenAll(files.Select(async file =>
             {
                 try
@@ -58,7 +49,7 @@ namespace Donald_no_Backup
                             Directory.CreateDirectory(toPath);
                         }
                         //ファイルコピー
-                        await CopyWithBufferAllAsync(file, to, 524288);
+                        await CopyWithBufferAllAsync(file, to, bufferSize);
                         Interlocked.Increment(ref Nums[1]);
                         progressCount.Report(Nums);
                         //作成日時を元ファイルと同じにする
@@ -67,30 +58,39 @@ namespace Donald_no_Backup
                 }
                 catch (Exception e)
                 {
-                    if(!file.Contains("RECYCLE.BIN"))
+                    if (!file.Contains("RECYCLE.BIN"))
                     {
                         errorList.Add(e.ToString());
                     }
                 }
             }));
-
-            await Task.WhenAll(folders.Select(async folder =>
+            //対象ディレクトリのフォルダを取得
+            try
             {
-                try
+                IEnumerable<string> folders = Directory.EnumerateDirectories(fromPath);
+                await Task.WhenAll(folders.Select(async folder =>
                 {
-                    //ゴミ箱は除外
-                    if (!folder.Contains("RECYCLE.BIN"))
+                    try
                     {
-                        //対象ディレクトリにある全てのフォルダに対してこのメソッドを再帰的に実行
-                        int index = folder.LastIndexOf(@"\", StringComparison.Ordinal);
-                        await ListFilesAsync(folder, toPath + @"\" + folder.Substring(index + 1, folder.Length - index - 1), progressCount);
+                        //ゴミ箱は除外
+                        if (!folder.Contains("RECYCLE.BIN"))
+                        {
+                            //対象ディレクトリにある全てのフォルダに対してこのメソッドを再帰的に実行
+                            int index = folder.LastIndexOf(@"\", StringComparison.Ordinal);
+                            await ListFilesAsync(folder, toPath + @"\" + folder.Substring(index + 1, folder.Length - index - 1), progressCount, bufferSize);
+                        }
                     }
-                }
-                catch (UnauthorizedAccessException)
-                {
+                    catch (UnauthorizedAccessException)
+                    {
 
-                }
-            }));
+                    }
+                }));
+            }
+            catch (UnauthorizedAccessException e)
+            {
+
+            }
+
         }
 
         private async Task CopyWithBufferAllAsync(string file, string to, int bufSize)
@@ -102,7 +102,7 @@ namespace Donald_no_Backup
                     byte[] buf;
                     if (inputStream.Length > bufSize)
                     {
-                        buf = new byte[bufSize];                     
+                        buf = new byte[bufSize];
                     }
                     else
                     {
@@ -128,6 +128,19 @@ namespace Donald_no_Backup
             FileInfo fromFileInfo = new FileInfo(fromFilePath);
             //比較先ファイルのFileInfo作成
             FileInfo toFileInfo = new FileInfo(toFilePath);
+            //比較元がシステムファイルか調べる
+            if ((fromFileInfo.Attributes & FileAttributes.System) != 0)
+            {
+                //飛ばす
+                return false;
+            }
+            //比較先がアクセス可能か調べる
+            if ((toFileInfo.Attributes & FileAttributes.ReadOnly) != 0)
+            {
+                //飛ばす
+                errorList.Add($"{toFilePath}:アクセス不可");
+                return false;
+            }
             //まずファイルサイズを比べる
             if (fromFileInfo.Length != toFileInfo.Length)
             {
@@ -140,6 +153,6 @@ namespace Donald_no_Backup
             }
             //たぶん同一ファイル
             return false;
-        }     
+        }
     }
 }

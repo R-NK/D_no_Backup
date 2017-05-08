@@ -32,6 +32,7 @@
             <Label Content="バックアップの追加"
                Foreground="#BDBDBD"
                FontFamily="Meiryo"
+               FontSize="14"
                Margin="0,0,0,5"
                Grid.Row="0"/>
             <Border BorderBrush="White"

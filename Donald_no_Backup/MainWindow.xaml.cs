@@ -1,22 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Windows.Threading;
 using System.Xml.Serialization;
 using Hardcodet.Wpf.TaskbarNotification;
 
@@ -25,16 +15,19 @@ namespace Donald_no_Backup
     /// <summary>
     /// MainWindow.xaml の相互作用ロジック
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow
     {
-        public static Window ThisWindow;
+        public static MainWindow ThisWindow;
         public ObservableCollection<DataList> DataLists;
+        private SettingData _settingData;
+        private int _defaultBuffer = 524288;
         public MainWindow()
         {
             InitializeComponent();
 
             DataLists = new ObservableCollection<DataList>();
-            //xml読み込み
+            _settingData = new SettingData();
+            //バックアップリストのxml読み込み
             XmlSerializer xml = new XmlSerializer(typeof(ObservableCollection<DataList>));
             using (StreamReader sr = new StreamReader("backup.xml"))
             {
@@ -43,17 +36,25 @@ namespace Donald_no_Backup
                     DataLists = (ObservableCollection<DataList>)xml.Deserialize(sr);
                 }
             }
+            //設定のxml読み込み
+            XmlSerializer settingxml = new XmlSerializer(typeof(SettingData));
+            try
+            {
+                using (StreamReader sr = new StreamReader("setting.xml"))
+                {
+                    if (!sr.EndOfStream)
+                    {
+                        _settingData = (SettingData) settingxml.Deserialize(sr);
+                    }
+                }
+            }
+            catch (IOException)
+            {
+                _settingData.BufferSize = _defaultBuffer;
+                _settingData.Schedule = 0;
+            }
+            
 
-            //カラムの自動調整
-            Loaded += delegate
-            {
-                ChangeListSize();
-            };
-            //ウィンドウのサイズ変更時にカラムの自動調整
-            SizeChanged += delegate
-            {
-                ChangeListSize();
-            };
             //タスクトレイから起動されたらトレイアイコンを隠す
             IsVisibleChanged += delegate
             {
@@ -63,32 +64,7 @@ namespace Donald_no_Backup
                 }
             };
             
-            listView.ItemsSource = DataLists;
-
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            ThisWindow = this;
-            this.Hide();
-            TaskIcon.Visibility = Visibility.Visible;
-        }
-
-        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
-        {
-            this.WindowState = WindowState.Minimized;
-        }
-
-        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (this.WindowState == WindowState.Maximized)
-            {
-                this.WindowState = WindowState.Normal;
-            }
-            else
-            {
-                this.WindowState = WindowState.Maximized;
-            }
+            DataGrid.ItemsSource = DataLists;
         }
 
         private void AddBackup_Click(object sender, RoutedEventArgs e)
@@ -100,24 +76,29 @@ namespace Donald_no_Backup
             }
         }
 
-        void ListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        void DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            var listView = (ListView)sender;
-            var item = listView.ContainerFromElement((DependencyObject)e.OriginalSource) as ListViewItem;
-            if (item != null)
+            var elem = e.MouseDevice.DirectlyOver as FrameworkElement;
+            if (elem != null)
             {
-                var d = (DataList)item.DataContext;
-                foreach (var list in AddWindow.ShowCustom(DataLists, d.Name, d.From, d.To))
+                DataGridCell cell = elem.Parent as DataGridCell;
+                if (cell == null)
                 {
-                    var l = DataLists.FirstOrDefault(i => i.Name == d.Name);
-                    l.Name = list.Name;
-                    l.From = list.From;
-                    l.To = list.To;
+                    // ParentでDataGridCellが拾えなかった時はTemplatedParentを参照
+                    // （Borderをダブルクリックした時）
+                    cell = elem.TemplatedParent as DataGridCell;
                 }
-            }
-            else
-            {
-                MessageBox.Show("Error");
+                if (cell != null)
+                {
+                    var d = (DataList)cell.DataContext;
+                    foreach (var list in AddWindow.ShowCustom(DataLists, d.Name, d.From, d.To))
+                    {
+                        var l = DataLists.FirstOrDefault(i => i.Name == d.Name);
+                        l.Name = list.Name;
+                        l.From = list.From;
+                        l.To = list.To;
+                    }
+                }
             }
         }
 
@@ -159,21 +140,16 @@ namespace Donald_no_Backup
 
         private void ListDelete_Click(object sender, RoutedEventArgs e)
         {
-            if (listView.SelectedItem != null)
+            if (DataGrid.SelectedItem != null)
             {
-                DataLists.RemoveAt(listView.SelectedIndex);
+                DataLists.RemoveAt(DataGrid.SelectedIndex);
             }
-        }
-
-        private void ChangeListSize()
-        {
-            DataGridView.Columns[1].Width = (listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[3].Width) / 2;
-            DataGridView.Columns[2].Width = listView.ActualWidth - DataGridView.Columns[0].Width - DataGridView.Columns[3].Width - DataGridView.Columns[1].Width - 10;
         }
 
         public async Task StartBackupAsync()
         {
             TaskIcon.ShowBalloonTip("バックアップ開始", "", BalloonIcon.Info);
+            string startTime = "";
             foreach (var data in DataLists)
             {
                 IProgress<int[]> progress = new Progress<int[]>(count =>
@@ -183,24 +159,26 @@ namespace Donald_no_Backup
                     {
                         TaskIcon.ToolTipText = count[1] + "/" + count[0];
                     }
-                });
+                });             
                 Backup bu = new Backup(data.From, data.To);
                 await Task.Run(async () =>
                 {
-                    await bu.StartAsync(progress);
+                    startTime =
+                       $"{DateTime.Now.Year}_{DateTime.Now.Month}_{DateTime.Now.Day}_{DateTime.Now.Hour}_{DateTime.Now.Minute}";
+                    await bu.StartAsync(progress, _settingData.BufferSize, startTime);
                 });
                 data.Progress = "完了";
             }
             TaskIcon.ToolTipText = "バックアップ完了:" + DateTime.Now;
-            TaskIcon.ShowBalloonTip("バックアップ完了", $"エラー:{ReadError()}", BalloonIcon.Info);
+            TaskIcon.ShowBalloonTip("バックアップ完了", $"エラー:{ReadError(startTime)}", BalloonIcon.Info);
         }
 
-        private int ReadError()
+        private int ReadError(string startTime)
         {
             int errors = 0;
-            if (File.Exists("error.txt"))
+            if (File.Exists($"error_{startTime}.txt"))
             {
-                using (StreamReader sr = new StreamReader("error.txt"))
+                using (StreamReader sr = new StreamReader($"error_{startTime}.txt"))
                 {
                     while (!sr.EndOfStream)
                     {
@@ -213,6 +191,30 @@ namespace Donald_no_Backup
                 }
             }
             return errors;
+        }
+
+        private void MenuSetting_Click(object sender, RoutedEventArgs e)
+        {
+            _settingData = Setting.ShowSettingWindow(_settingData);
+            //xmlに保存
+            XmlSerializer xml = new XmlSerializer(typeof(SettingData));
+            using (StreamWriter sw = new StreamWriter("setting.xml"))
+            {
+                xml.Serialize(sw, _settingData);
+            }
+        }
+
+        public void CreateMainWindow(MainWindow window)
+        {
+            ThisWindow = window;
+        }
+
+        private void MainWindow_OnClosing(object sender, CancelEventArgs e)
+        {
+            e.Cancel = true;
+            ThisWindow = this;
+            this.Hide();
+            TaskIcon.Visibility = Visibility.Visible;
         }
     }
 }
