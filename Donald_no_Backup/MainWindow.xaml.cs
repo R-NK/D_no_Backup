@@ -29,13 +29,22 @@ namespace Donald_no_Backup
             _settingData = new SettingData();
             //バックアップリストのxml読み込み
             XmlSerializer xml = new XmlSerializer(typeof(ObservableCollection<DataList>));
-            using (StreamReader sr = new StreamReader("backup.xml"))
+            try
             {
-                if (!sr.EndOfStream)
+                using (StreamReader sr = new StreamReader("backup.xml"))
                 {
-                    DataLists = (ObservableCollection<DataList>)xml.Deserialize(sr);
+                    if (!sr.EndOfStream)
+                    {
+                        DataLists = (ObservableCollection<DataList>) xml.Deserialize(sr);
+                    }
                 }
             }
+            catch (IOException)
+            {
+                StreamWriter sw = new StreamWriter("backup.xml");
+                sw.Write("");
+            }
+            
             //設定のxml読み込み
             XmlSerializer settingxml = new XmlSerializer(typeof(SettingData));
             try

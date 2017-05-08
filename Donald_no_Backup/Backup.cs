@@ -48,8 +48,20 @@ namespace Donald_no_Backup
                         {
                             Directory.CreateDirectory(toPath);
                         }
-                        //ファイルコピー
-                        await CopyWithBufferAllAsync(file, to, bufferSize);
+                        FileInfo fi = new FileInfo(to);
+                        //隠し属性がある場合一旦削除し上書き後隠し属性追加
+                        if ((fi.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
+                        {
+                            fi.Attributes &= ~FileAttributes.Hidden;
+                            //ファイルコピー
+                            await CopyWithBufferAllAsync(file, to, bufferSize);
+                            fi.Attributes |= FileAttributes.Hidden;
+                        }
+                        else
+                        {
+                            //ファイルコピー
+                            await CopyWithBufferAllAsync(file, to, bufferSize);
+                        }
                         Interlocked.Increment(ref Nums[1]);
                         progressCount.Report(Nums);
                         //作成日時を元ファイルと同じにする
@@ -90,7 +102,6 @@ namespace Donald_no_Backup
             {
 
             }
-
         }
 
         private async Task CopyWithBufferAllAsync(string file, string to, int bufSize)
@@ -134,12 +145,17 @@ namespace Donald_no_Backup
                 //飛ばす
                 return false;
             }
+            //比較元がアクセス可能化調べる
+            if ((fromFileInfo.Attributes & FileAttributes.ReadOnly) != 0)
+            {
+                //読み取り専用属性削除
+                fromFileInfo.IsReadOnly = false;
+            }
             //比較先がアクセス可能か調べる
             if ((toFileInfo.Attributes & FileAttributes.ReadOnly) != 0)
             {
-                //飛ばす
-                errorList.Add($"{toFilePath}:アクセス不可");
-                return false;
+                //読み取り専用属性削除
+                toFileInfo.IsReadOnly = false;
             }
             //まずファイルサイズを比べる
             if (fromFileInfo.Length != toFileInfo.Length)
