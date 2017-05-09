@@ -159,6 +159,7 @@ namespace Donald_no_Backup
         {
             TaskIcon.ShowBalloonTip("バックアップ開始", "", BalloonIcon.Info);
             string startTime = "";
+            int errors = 0;
             foreach (var data in DataLists)
             {
                 IProgress<int[]> progress = new Progress<int[]>(count =>
@@ -175,11 +176,12 @@ namespace Donald_no_Backup
                     startTime =
                        $"{DateTime.Now.Year}_{DateTime.Now.Month}_{DateTime.Now.Day}_{DateTime.Now.Hour}_{DateTime.Now.Minute}";
                     await bu.StartAsync(progress, _settingData.BufferSize, startTime);
+                    errors += ReadError(startTime);
                 });
                 data.Progress = "完了";
             }
             TaskIcon.ToolTipText = "バックアップ完了:" + DateTime.Now;
-            TaskIcon.ShowBalloonTip("バックアップ完了", $"エラー:{ReadError(startTime)}", BalloonIcon.Info);
+            TaskIcon.ShowBalloonTip("バックアップ完了", $"エラー:{errors}", BalloonIcon.Info);
         }
 
         private int ReadError(string startTime)

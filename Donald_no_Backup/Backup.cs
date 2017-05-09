@@ -47,10 +47,16 @@ namespace Donald_no_Backup
                         if (!Directory.Exists(toPath))
                         {
                             Directory.CreateDirectory(toPath);
+                            //作成日時を元フォルダと同じにする
+                            Directory.SetCreationTime(toPath, Directory.GetCreationTime(fromPath));
                         }
                         FileInfo fi = new FileInfo(to);
+                        if (!fi.Exists)
+                        {
+                            await CopyWithBufferAllAsync(file, to, bufferSize);
+                        }
                         //隠し属性がある場合一旦削除し上書き後隠し属性追加
-                        if ((fi.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
+                        else if ((fi.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
                         {
                             fi.Attributes &= ~FileAttributes.Hidden;
                             //ファイルコピー
@@ -66,6 +72,8 @@ namespace Donald_no_Backup
                         progressCount.Report(Nums);
                         //作成日時を元ファイルと同じにする
                         File.SetCreationTime(to, File.GetCreationTime(file));
+                        //更新日時を元ファイルと同じにする
+                        File.SetLastWriteTime(to, File.GetLastWriteTime(file));
                     }
                 }
                 catch (Exception e)
@@ -90,6 +98,8 @@ namespace Donald_no_Backup
                             //対象ディレクトリにある全てのフォルダに対してこのメソッドを再帰的に実行
                             int index = folder.LastIndexOf(@"\", StringComparison.Ordinal);
                             await ListFilesAsync(folder, toPath + @"\" + folder.Substring(index + 1, folder.Length - index - 1), progressCount, bufferSize);
+                            //更新日時を元フォルダと同じにする
+                            Directory.SetLastWriteTime(toPath, Directory.GetLastWriteTime(folder));
                         }
                     }
                     catch (UnauthorizedAccessException)
