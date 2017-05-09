@@ -84,6 +84,13 @@ namespace Donald_no_Backup
                     }
                 }
             }));
+            //更新日時を元フォルダと同じにする
+            try
+            {
+                Directory.SetLastWriteTime(toPath, Directory.GetLastWriteTime(fromPath));
+            }
+            catch (IOException) { }
+
             //対象ディレクトリのフォルダを取得
             try
             {
@@ -98,8 +105,6 @@ namespace Donald_no_Backup
                             //対象ディレクトリにある全てのフォルダに対してこのメソッドを再帰的に実行
                             int index = folder.LastIndexOf(@"\", StringComparison.Ordinal);
                             await ListFilesAsync(folder, toPath + @"\" + folder.Substring(index + 1, folder.Length - index - 1), progressCount, bufferSize);
-                            //更新日時を元フォルダと同じにする
-                            Directory.SetLastWriteTime(toPath, Directory.GetLastWriteTime(folder));
                         }
                     }
                     catch (UnauthorizedAccessException)
