@@ -40,6 +40,8 @@ namespace Donald_no_Backup
                 try
                 {
                     string to = toPath + @"\" + Path.GetFileName(file);
+                    bool isHiden = CheckHidden(file, to);
+
                     if (CheckFile(file, to))
                     {
                         Interlocked.Increment(ref Nums[0]);
@@ -51,25 +53,17 @@ namespace Donald_no_Backup
                             Directory.SetCreationTime(toPath, Directory.GetCreationTime(fromPath));
                         }
                         FileInfo fi = new FileInfo(to);
-                        if (!fi.Exists)
+                        //ファイルコピー
+                        await CopyWithBufferAllAsync(file, to, bufferSize);
+                        if (isHiden)
                         {
-                            await CopyWithBufferAllAsync(file, to, bufferSize);
-                        }
-                        //隠し属性がある場合一旦削除し上書き後隠し属性追加
-                        else if ((fi.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
-                        {
-                            fi.Attributes &= ~FileAttributes.Hidden;
-                            //ファイルコピー
-                            await CopyWithBufferAllAsync(file, to, bufferSize);
+                            //隠し属性追加
                             fi.Attributes |= FileAttributes.Hidden;
                         }
-                        else
-                        {
-                            //ファイルコピー
-                            await CopyWithBufferAllAsync(file, to, bufferSize);
-                        }
+                        
                         Interlocked.Increment(ref Nums[1]);
                         progressCount.Report(Nums);
+
                         //作成日時を元ファイルと同じにする
                         File.SetCreationTime(to, File.GetCreationTime(file));
                         //更新日時を元ファイルと同じにする
@@ -127,27 +121,32 @@ namespace Donald_no_Backup
 
         private async Task CopyWithBufferAllAsync(string file, string to, int bufSize)
         {
-            using (FileStream inputStream = File.Open(file, FileMode.Open))
+            try
             {
-                using (FileStream outputStream = File.Create(to))
+                using (FileStream inputStream = File.Open(file, FileMode.Open))
                 {
-                    byte[] buf;
-                    if (inputStream.Length > bufSize)
+                    using (FileStream outputStream = File.Create(to))
                     {
-                        buf = new byte[bufSize];
-                    }
-                    else
-                    {
-                        //入力ファイルが既定バッファより小さい場合そのファイルサイズでバッファを用意
-                        buf = new byte[inputStream.Length];
-                    }
-                    int numBytes;
-                    while ((numBytes = await inputStream.ReadAsync(buf, 0, buf.Length)) > 0)
-                    {
-                        await outputStream.WriteAsync(buf, 0, numBytes);
+                        byte[] buf;
+                        if (inputStream.Length > bufSize)
+                        {
+                            buf = new byte[bufSize];
+                        }
+                        else
+                        {
+                            //入力ファイルが既定バッファより小さい場合そのファイルサイズでバッファを用意
+                            buf = new byte[inputStream.Length];
+                        }
+                        int numBytes;
+                        while ((numBytes = await inputStream.ReadAsync(buf, 0, buf.Length)) > 0)
+                        {
+                            await outputStream.WriteAsync(buf, 0, numBytes);
+                        }
                     }
                 }
             }
+            catch (UnauthorizedAccessException) { }
+            
         }
 
         private bool CheckFile(string fromFilePath, string toFilePath)
@@ -189,6 +188,21 @@ namespace Donald_no_Backup
                 return true;
             }
             //たぶん同一ファイル
+            return false;
+        }
+
+        private bool CheckHidden(string fromFilePath, string toFilePath)
+        {
+            FileInfo fi = new FileInfo(toFilePath);
+            if (!fi.Exists)
+            {
+                return false;
+            }
+            if ((fi.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
+            {
+                fi.Attributes &= ~FileAttributes.Hidden;
+                return true;
+            }
             return false;
         }
     }
